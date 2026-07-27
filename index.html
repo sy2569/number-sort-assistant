@@ -407,7 +407,42 @@ function clearSecond(){
 
 
 
-</script>
+</script
+    // 自动保存输入内容
+
+document.getElementById("input1").addEventListener("input",function(){
+
+    localStorage.setItem(
+        "firstData",
+        this.value
+    );
+
+});
+
+
+document.getElementById("input2").addEventListener("input",function(){
+
+    localStorage.setItem(
+        "secondData",
+        this.value
+    );
+
+});
+
+
+
+// 打开时恢复数据
+
+window.onload=function(){
+
+    document.getElementById("input1").value =
+        localStorage.getItem("firstData") || "";
+
+
+    document.getElementById("input2").value =
+        localStorage.getItem("secondData") || "";
+
+};>
 
 
 
