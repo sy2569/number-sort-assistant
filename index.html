@@ -7,41 +7,59 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta name="theme-color" content="#007aff">
-
 <title>数字排序助手</title>
 
 
 <style>
 
-body{
+* {
+    box-sizing: border-box;
+}
 
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 
-    background:#f2f2f7;
+body {
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
     padding:20px;
+
+    background:#f2f2f7;
 
 }
 
 
-.container{
+.container {
 
-    max-width:500px;
+    max-width:600px;
 
     margin:auto;
 
 }
 
 
-h1{
+h1 {
 
     text-align:center;
+
+    font-size:24px;
 
 }
 
 
-textarea{
+
+label {
+
+    display:block;
+
+    margin-top:15px;
+
+    font-size:16px;
+
+}
+
+
+
+textarea {
 
     width:100%;
 
@@ -51,8 +69,6 @@ textarea{
 
     padding:10px;
 
-    margin-bottom:10px;
-
     border-radius:8px;
 
     border:1px solid #aaa;
@@ -61,28 +77,29 @@ textarea{
 
 
 
-button{
+button {
 
     width:100%;
 
-    height:45px;
+    padding:12px;
 
-    margin-top:10px;
+    margin-top:15px;
 
     font-size:18px;
+
+    color:white;
+
+    background:#007aff;
 
     border:none;
 
     border-radius:8px;
 
-    background:#007aff;
-
-    color:white;
-
 }
 
 
-.clear{
+
+.clear-button {
 
     background:#8e8e93;
 
@@ -90,27 +107,39 @@ button{
 
 
 
-table{
-
-    border-collapse:collapse;
+.table-wrap {
 
     margin-top:25px;
 
-    width:100%;
+    overflow-x:auto;
+
+    -webkit-overflow-scrolling:touch;
 
 }
 
 
 
-td{
+table {
+
+    border-collapse:collapse;
+
+    table-layout:fixed;
+
+}
+
+
+
+td {
 
     border:1px solid black;
-
-    height:55px;
 
     text-align:center;
 
     font-size:22px;
+
+    height:50px;
+
+    min-width:50px;
 
 }
 
@@ -120,7 +149,6 @@ td{
 
 
 </head>
-
 
 
 <body>
@@ -133,21 +161,28 @@ td{
 
 
 
-<label>第一组数据：</label>
+<label>
+第一组数据：
+</label>
+
 
 <textarea id="input1"
 placeholder="例如：5 3 8 3 1"></textarea>
 
 
 
-<label>第二组数据：</label>
+
+<label>
+第二组数据：
+</label>
+
 
 <textarea id="input2"
-placeholder="例如：9.2.6.2.7"></textarea>
+placeholder="例如：9 2 6 2 7"></textarea>
 
 
 
-<button class="clear" onclick="clearSecond()">
+<button class="clear-button" onclick="clearSecond()">
 
 清除第二组数据
 
@@ -163,7 +198,13 @@ placeholder="例如：9.2.6.2.7"></textarea>
 
 
 
+
+<div class="table-wrap">
+
 <div id="result"></div>
+
+</div>
+
 
 
 </div>
@@ -171,38 +212,39 @@ placeholder="例如：9.2.6.2.7"></textarea>
 
 
 
+
 <script>
 
 
+// 支持 空格 , ， . 。 、 ; 等分隔
 
 function getNumbers(text){
 
 
-    // 把各种分隔符统一处理
-
-    text=text.replace(/[，。；、,.;|]/g," ");
+    text = text.replace(/[，。；、,.;|]+/g," ");
 
 
-
-    let arr=text
+    return text
 
     .trim()
 
     .split(/\s+/)
 
-    .filter(x=>x!="")
+    .filter(x=>x!=="")
 
-    .map(Number);
+    .map(Number)
 
-
-
-    return arr.filter(x=>!isNaN(x));
+    .filter(x=>!Number.isNaN(x));
 
 
 }
 
 
 
+
+
+// 排序规则
+// 重复数字保留一个排序，另一个放最后
 
 function specialSort(arr){
 
@@ -221,6 +263,7 @@ function specialSort(arr){
     let normal=[];
 
     let duplicate=[];
+
 
 
     arr.forEach(n=>{
@@ -249,7 +292,6 @@ function specialSort(arr){
 
             normal.push(n);
 
-
         }
 
 
@@ -269,35 +311,32 @@ function specialSort(arr){
 
 
 
+
 function runSort(){
 
 
 
-    let first=specialSort(
+    let first = specialSort(
 
         getNumbers(
-
             document.getElementById("input1").value
-
         )
 
     );
 
 
 
-    let second=specialSort(
+    let second = specialSort(
 
         getNumbers(
-
             document.getElementById("input2").value
-
         )
 
     );
 
 
 
-    if(first.length==0){
+    if(first.length===0){
 
         return;
 
@@ -313,6 +352,7 @@ function runSort(){
 
 
 
+
     let html="<table>";
 
 
@@ -321,7 +361,7 @@ function runSort(){
 
     first.forEach(n=>{
 
-        html+="<td>"+n+"</td>";
+        html += "<td>"+n+"</td>";
 
     });
 
@@ -329,11 +369,12 @@ function runSort(){
 
 
 
+
     html+="<tr>";
 
     second.forEach(n=>{
 
-        html+="<td>"+n+"</td>";
+        html += "<td>"+n+"</td>";
 
     });
 
@@ -348,16 +389,16 @@ function runSort(){
     document.getElementById("result").innerHTML=html;
 
 
-
 }
 
 
 
 
+
+// 只清除第二组输入框
+
 function clearSecond(){
 
-
-    // 只清除输入框
 
     document.getElementById("input2").value="";
 
@@ -367,6 +408,7 @@ function clearSecond(){
 
 
 </script>
+
 
 
 </body>
