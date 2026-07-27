@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>数字排序助手</title>
-
     <style>
         * {
             box-sizing: border-box;
@@ -25,6 +23,7 @@
         h1 {
             text-align: center;
             font-size: 24px;
+            margin-bottom: 8px;
         }
 
         label {
@@ -40,6 +39,8 @@
             padding: 10px;
             border-radius: 8px;
             border: 1px solid #aaa;
+            resize: vertical;
+            font-family: inherit;
         }
 
         button {
@@ -51,16 +52,30 @@
             background: #007aff;
             border: none;
             border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:active {
+            opacity: 0.8;
         }
 
         .clear-button {
             background: #8e8e93;
         }
 
+        .delete-all-history-button {
+            background: #ff3b30;
+            margin-top: 10px;
+        }
+
         .table-wrap {
             margin-top: 25px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         }
 
         table {
@@ -74,122 +89,256 @@
             font-size: 22px;
             height: 50px;
             min-width: 50px;
+            padding: 6px;
+        }
+
+        /* 历史记录样式 */
+        .history-section {
+            margin-top: 30px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+
+        .history-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-item {
+            background: #fff;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+        }
+
+        .history-time {
+            color: #666;
+            font-size: 13px;
+            min-width: 100px;
+        }
+
+        .history-result {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .history-result span {
+            display: block;
+            margin: 2px 0;
+        }
+
+        .no-history {
+            color: #999;
+            font-size: 15px;
+            text-align: center;
         }
     </style>
 </head>
-
 <body>
 
-    <div class="container">
-        <h1>数字排序助手</h1>
+<div class="container">
+    <h1>数字排序助手</h1>
 
-        <label>第一组数据：</label>
-        <textarea id="input1" placeholder="例如：5 3 8 3 1"></textarea>
+    <label>第一组数据：</label>
+    <textarea id="input1" placeholder="例如：5 3 8 3 1"></textarea>
 
-        <label>第二组数据：</label>
-        <textarea id="input2" placeholder="例如：9 2 6 2 7"></textarea>
+    <label>第二组数据：</label>
+    <textarea id="input2" placeholder="例如：9 2 6 2 7"></textarea>
 
-        <button class="clear-button" onclick="clearSecond()">清除第二组数据</button>
-        <button onclick="runSort()">排序</button>
+    <button class="clear-button" onclick="clearSecond()">清除第二组数据</button>
+    <button onclick="runSort()">排序</button>
 
-        <div class="table-wrap">
-            <div id="result"></div>
-        </div>
+    <div class="table-wrap">
+        <div id="result"></div>
     </div>
 
-    <script>
-        // 支持 空格 , ， . 。 、 ; 等分隔
-        function getNumbers(text) {
-            text = text.replace(/[，。；、,.;|]+/g, " ");
-            return text
-                .trim()
-                .split(/\s+/)
-                .filter(x => x !== "")
-                .map(Number)
-                .filter(x => !Number.isNaN(x));
-        }
+    <!-- 历史记录区域 -->
+    <div class="history-section">
+        <div class="history-title">📋 最近10条结果</div>
+        <ul id="historyList" class="history-list"></ul>
+        <button id="deleteAllHistory" class="delete-all-history-button">🗑️ 删除全部历史记录</button>
+    </div>
+</div>
 
-        // 排序规则：重复数字保留一个排序，另一个放最后
-        function specialSort(arr) {
-            let count = {};
-            arr.forEach(n => {
-                count[n] = (count[n] || 0) + 1;
-            });
+<script>
+    // 支持 空格 , ， . 。 、 ; 等分隔
+    function getNumbers(text) {
+        text = text.replace(/[，。；、,.;|]+/g, " ");
+        return text
+            .trim()
+            .split(/\s+/)
+            .filter(x => x !== "")
+            .map(Number)
+            .filter(x => !Number.isNaN(x));
+    }
 
-            let normal = [];
-            let duplicate = [];
+    // 排序规则：重复数字保留一个排序，另一个放最后
+    function specialSort(arr) {
+        let count = {};
+        arr.forEach(n => {
+            count[n] = (count[n] || 0) + 1;
+        });
 
-            arr.forEach(n => {
-                if (count[n] > 1) {
-                    if (!normal.includes(n)) {
-                        normal.push(n);
-                    } else {
-                        duplicate.push(n);
-                    }
-                } else {
+        let normal = [];
+        let duplicate = [];
+
+        arr.forEach(n => {
+            if (count[n] > 1) {
+                if (!normal.includes(n)) {
                     normal.push(n);
+                } else {
+                    duplicate.push(n);
                 }
-            });
-
-            normal.sort((a, b) => a - b);
-            return normal.concat(duplicate);
-        }
-
-        function runSort() {
-            let first = specialSort(
-                getNumbers(document.getElementById("input1").value)
-            );
-            let second = specialSort(
-                getNumbers(document.getElementById("input2").value)
-            );
-
-            if (first.length === 0) {
-                return;
+            } else {
+                normal.push(n);
             }
-
-            while (second.length < first.length) {
-                second.push("");
-            }
-
-            let html = "<table>";
-            html += "<tr>";
-            first.forEach(n => {
-                html += "<td>" + n + "</td>";
-            });
-            html += "</tr>";
-
-            html += "<tr>";
-            second.forEach(n => {
-                html += "<td>" + n + "</td>";
-            });
-            html += "</tr>";
-            html += "</table>";
-
-            document.getElementById("result").innerHTML = html;
-        }
-
-        // 只清除第二组输入框
-        function clearSecond() {
-            document.getElementById("input2").value = "";
-        }
-
-        // 自动保存输入内容
-        document.getElementById("input1").addEventListener("input", function () {
-            localStorage.setItem("firstData", this.value);
         });
 
-        document.getElementById("input2").addEventListener("input", function () {
-            localStorage.setItem("secondData", this.value);
+        normal.sort((a, b) => a - b);
+        return normal.concat(duplicate);
+    }
+
+    // 保存排序结果到历史记录（只存结果，不存原始输入）
+    function saveHistoryResult(sorted1, sorted2) {
+        // 清理第二组中的空字符串（补齐用）
+        const cleanSorted2 = sorted2.filter(n => n !== "");
+        // 仅当两组结果至少有一组有数据时才保存
+        if (sorted1.length === 0 && cleanSorted2.length === 0) return;
+
+        let history = JSON.parse(localStorage.getItem('sortHistory')) || [];
+        history.unshift({
+            timestamp: new Date().toLocaleString(),
+            sorted1: sorted1,
+            sorted2: cleanSorted2
         });
 
-        // 打开时恢复数据
-        window.onload = function () {
-            document.getElementById("input1").value =
-                localStorage.getItem("firstData") || "";
-            document.getElementById("input2").value =
-                localStorage.getItem("secondData") || "";
-        };
-    </script>
+        // 只保留最近10条
+        if (history.length > 10) {
+            history = history.slice(0, 10);
+        }
+        localStorage.setItem('sortHistory', JSON.stringify(history));
+        renderHistory();
+    }
+
+    // 渲染历史记录列表
+    function renderHistory() {
+        const historyList = document.getElementById('historyList');
+        const history = JSON.parse(localStorage.getItem('sortHistory')) || [];
+
+        if (history.length === 0) {
+            historyList.innerHTML = '<li class="no-history">暂无历史结果</li>';
+            return;
+        }
+
+        let html = '';
+        history.forEach(item => {
+            const firstStr = item.sorted1.join(', ') || '(空)';
+            const secondStr = item.sorted2.join(', ') || '(空)';
+            html += `
+                <li class="history-item">
+                    <span class="history-time">${item.timestamp}</span>
+                    <div class="history-result">
+                        <span>第一组结果: ${firstStr}</span>
+                        <span>第二组结果: ${secondStr}</span>
+                    </div>
+                </li>
+            `;
+        });
+        historyList.innerHTML = html;
+    }
+
+    // 删除全部历史记录
+    function deleteAllHistory() {
+        if (confirm('确定要删除全部历史结果吗？')) {
+            localStorage.removeItem('sortHistory');
+            renderHistory();
+        }
+    }
+
+    // 排序主函数
+    function runSort() {
+        const input1Text = document.getElementById('input1').value;
+        const input2Text = document.getElementById('input2').value;
+
+        let first = specialSort(getNumbers(input1Text));
+        let second = specialSort(getNumbers(input2Text));
+
+        if (first.length === 0 && second.length === 0) {
+            document.getElementById('result').innerHTML = '';
+            return;
+        }
+
+        // 补齐第二组长度以便表格显示
+        const paddedSecond = [...second];
+        while (paddedSecond.length < first.length) {
+            paddedSecond.push("");
+        }
+
+        let html = "<table>";
+        html += "<tr>";
+        first.forEach(n => {
+            html += "<td>" + n + "</td>";
+        });
+        html += "</tr>";
+
+        html += "<tr>";
+        paddedSecond.forEach(n => {
+            html += "<td>" + n + "</td>";
+        });
+        html += "</tr>";
+        html += "</table>";
+
+        document.getElementById('result').innerHTML = html;
+
+        // 只保存排序后的结果（第一组完整数组，第二组去除空字符串）
+        saveHistoryResult(first, second);
+    }
+
+    // 只清除第二组输入框
+    function clearSecond() {
+        document.getElementById('input2').value = "";
+    }
+
+    // 页面初始化
+    window.addEventListener('DOMContentLoaded', function () {
+        // 恢复之前保存的输入内容
+        document.getElementById('input1').value = localStorage.getItem('firstData') || "";
+        document.getElementById('input2').value = localStorage.getItem('secondData') || "";
+
+        // 渲染历史结果列表
+        renderHistory();
+
+        // 绑定删除全部历史按钮
+        document.getElementById('deleteAllHistory').addEventListener('click', deleteAllHistory);
+
+        // 自动保存输入框内容
+        document.getElementById('input1').addEventListener('input', function () {
+            localStorage.setItem('firstData', this.value);
+        });
+        document.getElementById('input2').addEventListener('input', function () {
+            localStorage.setItem('secondData', this.value);
+        });
+
+        // 如果打开时有数据，自动排序
+        if (document.getElementById('input1').value.trim() !== '' || document.getElementById('input2').value.trim() !== '') {
+            runSort();
+        }
+    });
+</script>
 
 </body>
 </html>
