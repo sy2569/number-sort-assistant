@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#007aff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="数字排序助手">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>数字排序助手</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#f2f2f7}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:calc(20px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom))}
+.container{max-width:600px;margin:auto}
+h1{text-align:center;font-size:25px;margin:8px 0 28px}
+label{display:block;margin:16px 0 8px;font-size:16px;font-weight:600}
+textarea{width:100%;height:52px;font-size:18px;padding:11px;border-radius:10px;border:1px solid #aaa;background:#fff;resize:none}
+button{width:100%;margin-top:20px;height:50px;font-size:18px;font-weight:600;color:#fff;background:#007aff;border:0;border-radius:11px}
+button:active{opacity:.75}
+#message{margin-top:12px;color:#c00;text-align:center;min-height:20px}
+.table-wrap{margin-top:25px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;table-layout:fixed;margin:auto}
+td{border:1px solid #000;height:55px;min-width:55px;text-align:center;font-size:22px;padding:0 8px;background:#fff}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>数字排序助手</h1>
+
+<label for="input1">第一组数据：</label>
+<textarea id="input1" inputmode="decimal" autocomplete="off" placeholder="例如：5 3 8 3 1"></textarea>
+
+<label for="input2">第二组数据：</label>
+<textarea id="input2" inputmode="decimal" autocomplete="off" placeholder="例如：9 2 6 2 7"></textarea>
+
+<button id="sortButton">排序</button>
+<div id="message" aria-live="polite"></div>
+<div id="output" class="table-wrap"></div>
+</div>
+
+<script>
+function getNumbers(text){
+    const parts=text.trim().split(/[\s,，]+/).filter(Boolean);
+    if(!parts.length)return [];
+    const nums=parts.map(Number);
+    if(nums.some(n=>!Number.isFinite(n)))throw new Error("请输入有效数字");
+    return nums;
+}
+function specialSort(arr){
+    const count=new Map();
+    for(const n of arr)count.set(n,(count.get(n)||0)+1);
+    const normal=[],duplicate=[],seen=new Set();
+    for(const n of arr){
+        if((count.get(n)||0)>1){
+            if(!seen.has(n)){normal.push(n);seen.add(n)}
+            else duplicate.push(n);
+        }else normal.push(n);
+    }
+    normal.sort((a,b)=>a-b);
+    return normal.concat(duplicate);
+}
+function runSort(){
+    const message=document.getElementById("message");
+    const output=document.getElementById("output");
+    message.textContent=""; output.innerHTML="";
+    try{
+        const first=specialSort(getNumbers(document.getElementById("input1").value));
+        const second=specialSort(getNumbers(document.getElementById("input2").value));
+        if(!first.length){message.textContent="请先输入第一组数据";return}
+        if(second.length>first.length){message.textContent="第二组数据不能多于第一组数据";return}
+        while(second.length<first.length)second.push("");
+        const table=document.createElement("table");
+        for(const row of [first,second]){
+            const tr=document.createElement("tr");
+            for(const n of row){
+                const td=document.createElement("td");
+                td.textContent=n;
+                tr.appendChild(td);
+            }
+            table.appendChild(tr);
+        }
+        output.appendChild(table);
+    }catch(e){message.textContent=e.message}
+}
+document.getElementById("sortButton").addEventListener("click",runSort);
+if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));
+}
+</script>
+</body>
+</html>
