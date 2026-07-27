@@ -43,11 +43,18 @@ td{border:1px solid #000;height:55px;min-width:55px;text-align:center;font-size:
 
 <script>
 function getNumbers(text){
-    const parts=text.trim().split(/[\s,.，]+/).filter(Boolean);
-    if(!parts.length)return [];
-    const nums=parts.map(Number);
-    if(nums.some(n=>!Number.isFinite(n)))throw new Error("请输入有效数字");
-    return nums;
+
+    // 先把所有分隔符统一替换为空格
+    text = text.replace(/[，。；、|,.;]+/g, " ");
+
+
+    return text
+        .trim()
+        .split(/\s+/)
+        .filter(x => x !== "")
+        .map(Number)
+        .filter(x => !Number.isNaN(x));
+
 }
 function specialSort(arr){
     const count=new Map();
