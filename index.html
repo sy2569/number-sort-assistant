@@ -43,7 +43,7 @@ td{border:1px solid #000;height:55px;min-width:55px;text-align:center;font-size:
 
 <script>
 function getNumbers(text){
-    const parts=text.trim().split(/[\s,，]+/).filter(Boolean);
+    const parts=text.trim().split(/[\s,.，]+/).filter(Boolean);
     if(!parts.length)return [];
     const nums=parts.map(Number);
     if(nums.some(n=>!Number.isFinite(n)))throw new Error("请输入有效数字");
