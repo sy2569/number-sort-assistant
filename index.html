@@ -35,7 +35,9 @@ td{border:1px solid #000;height:55px;min-width:55px;text-align:center;font-size:
 
 <label for="input2">第二组数据：</label>
 <textarea id="input2" inputmode="decimal" autocomplete="off" placeholder="例如：9 2 6 2 7"></textarea>
-
+<button onclick="clearSecond()">
+清除第二组数据
+</button>
 <button id="sortButton">排序</button>
 <div id="message" aria-live="polite"></div>
 <div id="output" class="table-wrap"></div>
@@ -96,6 +98,10 @@ document.getElementById("sortButton").addEventListener("click",runSort);
 if("serviceWorker" in navigator){
     window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));
 }
-</script>
+</scriptfunction clearSecond(){
+
+    document.getElementById("input2").value = "";
+
+}>
 </body>
 </html>
