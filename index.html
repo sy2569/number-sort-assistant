@@ -27,29 +27,47 @@
         .clear-button { background: #8e8e93; }
         .delete-all-history-button { background: #ff3b30; margin-top: 10px; }
 
+        /* 表格容器：固定格子大小 + 横向滚动 */
         .table-wrap {
-            margin-top: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-            border-radius: 10px; background: #fff;
+            margin-top: 10px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 10px;
+            background: #fff;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         }
-        table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+        table {
+            border-collapse: collapse;
+            table-layout: fixed;   /* 固定列宽，配合min-width使用 */
+            width: 100%;           /* 让表格占满容器，但列宽按比例分配 */
+            min-width: max-content; /* 如果数字很多，表格至少要有内容宽度，触发滚动 */
+        }
         td {
-            border: 1px solid black; text-align: center; font-size: 22px;
-            height: 50px; min-width: 50px; padding: 6px;
+            border: 1px solid black;
+            text-align: center;
+            font-size: 22px;
+            height: 50px;
+            min-width: 50px;      /* 每个格子最小50px */
+            padding: 6px;
         }
 
+        /* 历史记录区域 */
         .history-section {
-            margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;
+            margin-top: 30px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
         }
         .history-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
 
-        /* 历史记录卡片容器 */
+        /* 每条历史记录卡片：纯块级布局，不压缩内部表格 */
         .history-item {
+            display: block;
             background: #fff;
             border-radius: 12px;
             padding: 12px 15px;
             margin-bottom: 15px;
             box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+            overflow: hidden;      /* 配合内部滚动 */
         }
         .history-time {
             color: #666;
@@ -57,15 +75,18 @@
             margin-bottom: 8px;
             font-weight: 500;
         }
+        /* 历史记录内的表格容器单独处理，去掉重复的阴影和圆角 */
         .history-item .table-wrap {
-            margin-top: 0;  /* 移除多余间距 */
-            box-shadow: none; /* 去掉重复阴影 */
+            margin-top: 0;
+            box-shadow: none;
             border-radius: 8px;
         }
-        .history-item table {
-            margin: 0; /* 确保表格无外边距 */
+        .no-history {
+            color: #999;
+            font-size: 15px;
+            text-align: center;
+            padding: 20px;
         }
-        .no-history { color: #999; font-size: 15px; text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -94,13 +115,11 @@
 </div>
 
 <script>
-    // 提取数字
     function getNumbers(text) {
         text = text.replace(/[，。；、,.;|]+/g, " ");
         return text.trim().split(/\s+/).filter(x => x !== "").map(Number).filter(x => !Number.isNaN(x));
     }
 
-    // 特殊排序
     function specialSort(arr) {
         let count = {};
         arr.forEach(n => { count[n] = (count[n] || 0) + 1; });
@@ -117,7 +136,6 @@
         return normal.concat(duplicate);
     }
 
-    // 保存结果到历史 (仅保存排序后的数组)
     function saveHistoryResult(sorted1, sorted2) {
         const cleanSorted2 = sorted2.filter(n => n !== "");
         if (sorted1.length === 0 && cleanSorted2.length === 0) return;
@@ -133,7 +151,7 @@
         renderHistory();
     }
 
-    // ✅ 修改后的渲染函数：每条历史记录用表格展示
+    // ✅ 修正后的历史记录渲染：表格格子大小固定，可滑动
     function renderHistory() {
         const container = document.getElementById('historyList');
         const history = JSON.parse(localStorage.getItem('sortHistory')) || [];
@@ -145,28 +163,22 @@
 
         let html = '';
         history.forEach(item => {
-            // 准备数据：让第二行长度与第一行对齐，不足补空字符串
             const firstRow = item.sorted1;
             const secondRow = [...item.sorted2];
             while (secondRow.length < firstRow.length) {
                 secondRow.push("");
             }
 
-            // 构建表格
-            let tableHtml = '<table>';
-            // 第一行（第一组结果）
-            tableHtml += '<tr>';
+            // 构建与主结果完全相同的表格结构
+            let tableHtml = '<table><tr>';
             firstRow.forEach(n => {
                 tableHtml += '<td>' + n + '</td>';
             });
-            tableHtml += '</tr>';
-            // 第二行（第二组结果）
-            tableHtml += '<tr>';
+            tableHtml += '</tr><tr>';
             secondRow.forEach(n => {
                 tableHtml += '<td>' + (n !== "" ? n : '') + '</td>';
             });
-            tableHtml += '</tr>';
-            tableHtml += '</table>';
+            tableHtml += '</tr></table>';
 
             html += `
                 <div class="history-item">
@@ -180,7 +192,6 @@
         container.innerHTML = html;
     }
 
-    // 删除全部历史
     function deleteAllHistory() {
         if (confirm('确定要删除全部历史结果吗？')) {
             localStorage.removeItem('sortHistory');
@@ -188,7 +199,6 @@
         }
     }
 
-    // 排序主函数
     function runSort() {
         const input1Text = document.getElementById('input1').value;
         const input2Text = document.getElementById('input2').value;
