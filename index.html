@@ -100,8 +100,8 @@
             min-width: 50px;
         }
 
-        /* 对齐模式下无对应数字的红色标记（低可见度） */
-        .not-in-first {
+        /* 差异标记（上下不同时同时标红，低可见度） */
+        .diff-highlight {
             background-color: rgba(255, 0, 0, 0.15);
         }
 
@@ -180,12 +180,10 @@
     // 当前排序模式，从存储中恢复，默认为 'A'
     let currentMode = localStorage.getItem('sortMode') || 'A';
 
-    // 保存模式到本地存储
     function saveMode() {
         localStorage.setItem('sortMode', currentMode);
     }
 
-    // 根据当前模式更新按钮激活样式
     function updateModeButtons() {
         document.getElementById('modeA').classList.toggle('active', currentMode === 'A');
         document.getElementById('modeB').classList.toggle('active', currentMode === 'B');
@@ -223,37 +221,50 @@
         return normal.concat(duplicate);
     }
 
-    // 模式B：第一组升序排列；第二组按第一组顺序排列，不在第一组中的数字升序排在最后
+    // 模式B：新对齐逻辑
     function sortModeB(firstArr, secondArr) {
+        // 第一行：升序排序
         const sortedFirst = [...firstArr].sort((a, b) => a - b);
 
-        const firstOrder = new Map();
-        let order = 0;
-        sortedFirst.forEach(n => {
-            if (!firstOrder.has(n)) {
-                firstOrder.set(n, order);
-                order++;
-            }
-        });
-
-        const inFirst = [];
-        const notInFirst = [];
+        // 统计第二组数字的个数
+        const secondCount = new Map();
         secondArr.forEach(n => {
-            if (firstOrder.has(n)) {
-                inFirst.push(n);
+            secondCount.set(n, (secondCount.get(n) || 0) + 1);
+        });
+
+        // 构建第二行，先尝试匹配第一行的每个数字
+        const secondLine = [];
+        sortedFirst.forEach(val => {
+            if (secondCount.has(val) && secondCount.get(val) > 0) {
+                secondLine.push(val);
+                secondCount.set(val, secondCount.get(val) - 1);
             } else {
-                notInFirst.push(n);
+                secondLine.push(null); // 留空
             }
         });
 
-        const sortedInFirst = [...inFirst].sort((a, b) => {
-            return firstOrder.get(a) - firstOrder.get(b);
-        });
+        // 收集剩余数字（多余的数字），并按升序排列
+        let surplus = [];
+        for (let [num, cnt] of secondCount) {
+            for (let i = 0; i < cnt; i++) {
+                surplus.push(num);
+            }
+        }
+        surplus.sort((a, b) => a - b);
 
-        const sortedNotInFirst = [...notInFirst].sort((a, b) => a - b);
-        const sortedSecond = sortedInFirst.concat(sortedNotInFirst);
+        // 将多余数字依次填入空位
+        for (let i = 0; i < secondLine.length; i++) {
+            if (secondLine[i] === null && surplus.length > 0) {
+                secondLine[i] = surplus.shift();
+            }
+        }
 
-        return { first: sortedFirst, second: sortedSecond };
+        // 如果还有剩余数字，追加在末尾
+        while (surplus.length > 0) {
+            secondLine.push(surplus.shift());
+        }
+
+        return { first: sortedFirst, second: secondLine };
     }
 
     // 运行排序
@@ -267,10 +278,8 @@
         }
 
         let first, second;
-        let firstSet = null;
 
         if (currentMode === 'B') {
-            firstSet = new Set(firstRaw);
             const result = sortModeB(firstRaw, secondRaw);
             first = result.first;
             second = result.second;
@@ -279,29 +288,46 @@
             second = sortModeA(secondRaw);
         }
 
+        // 确保两行至少有一行有数据，并计算最长长度用于补齐显示
+        const maxLen = Math.max(first.length, second.length);
+        const paddedFirst = [...first];
         const paddedSecond = [...second];
-        while (paddedSecond.length < first.length) {
-            paddedSecond.push("");
-        }
+        while (paddedFirst.length < maxLen) paddedFirst.push("");
+        while (paddedSecond.length < maxLen) paddedSecond.push("");
 
+        // 生成表格，同时根据差异标记红色（仅模式B）
         let html = "<table><tr>";
-        first.forEach(n => {
-            html += "<td>" + n + "</td>";
-        });
-        html += "</tr><tr>";
-
-        paddedSecond.forEach(n => {
-            let tdClass = "";
-            if (currentMode === 'B' && n !== "" && !firstSet.has(Number(n))) {
-                tdClass = ' class="not-in-first"';
+        for (let i = 0; i < maxLen; i++) {
+            let cellClass = "";
+            if (currentMode === 'B') {
+                const v1 = paddedFirst[i] === "" ? "" : paddedFirst[i];
+                const v2 = paddedSecond[i] === "" ? "" : paddedSecond[i];
+                if (v1 !== v2) {
+                    cellClass = ' class="diff-highlight"';
+                }
             }
-            html += "<td" + tdClass + ">" + (n !== "" ? n : "") + "</td>";
-        });
-
+            html += "<td" + cellClass + ">" + (paddedFirst[i] !== "" ? paddedFirst[i] : "") + "</td>";
+        }
+        html += "</tr><tr>";
+        for (let i = 0; i < maxLen; i++) {
+            let cellClass = "";
+            if (currentMode === 'B') {
+                const v1 = paddedFirst[i] === "" ? "" : paddedFirst[i];
+                const v2 = paddedSecond[i] === "" ? "" : paddedSecond[i];
+                if (v1 !== v2) {
+                    cellClass = ' class="diff-highlight"';
+                }
+            }
+            html += "<td" + cellClass + ">" + (paddedSecond[i] !== "" ? paddedSecond[i] : "") + "</td>";
+        }
         html += "</tr></table>";
+
         document.getElementById("result").innerHTML = html;
 
-        saveHistoryResult(first, second.filter(n => n !== ""));
+        // 保存历史记录（只保存非空结果）
+        const cleanFirst = first.length === 0 ? [] : first;
+        const cleanSecond = second.filter(n => n !== null && n !== "");
+        saveHistoryResult(cleanFirst, cleanSecond);
     }
 
     function clearSecond() {
@@ -336,18 +362,20 @@
         let html = '';
         history.forEach(item => {
             const firstRow = item.sorted1;
-            const secondRow = [...item.sorted2];
-            while (secondRow.length < firstRow.length) {
-                secondRow.push("");
-            }
+            const secondRow = item.sorted2;
+            const maxLen = Math.max(firstRow.length, secondRow.length);
+            const paddedFirst = [...firstRow];
+            const paddedSecond = [...secondRow];
+            while (paddedFirst.length < maxLen) paddedFirst.push("");
+            while (paddedSecond.length < maxLen) paddedSecond.push("");
 
             let tableHtml = '<table><tr>';
-            firstRow.forEach(n => {
-                tableHtml += '<td>' + n + '</td>';
+            paddedFirst.forEach(n => {
+                tableHtml += '<td>' + (n !== "" ? n : "") + '</td>';
             });
             tableHtml += '</tr><tr>';
-            secondRow.forEach(n => {
-                tableHtml += '<td>' + (n !== "" ? n : '') + '</td>';
+            paddedSecond.forEach(n => {
+                tableHtml += '<td>' + (n !== "" ? n : "") + '</td>';
             });
             tableHtml += '</tr></table>';
 
@@ -389,19 +417,15 @@
     });
 
     window.onload = function () {
-        // 恢复输入框内容
         document.getElementById("input1").value = localStorage.getItem("firstData") || "";
         document.getElementById("input2").value = localStorage.getItem("secondData") || "";
 
-        // 恢复排序模式并更新按钮
         currentMode = localStorage.getItem('sortMode') || 'A';
         updateModeButtons();
 
-        // 绑定删除按钮、渲染历史
         document.getElementById('deleteAllHistory').addEventListener('click', deleteAllHistory);
         renderHistory();
 
-        // 如有数据自动排序
         if (document.getElementById("input1").value.trim() !== '' || document.getElementById("input2").value.trim() !== '') {
             runSort();
         }
