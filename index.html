@@ -100,7 +100,7 @@
             min-width: 50px;
         }
 
-        /* 新增：对齐模式下无对应数字的红色标记（低可见度） */
+        /* 对齐模式下无对应数字的红色标记（低可见度） */
         .not-in-first {
             background-color: rgba(255, 0, 0, 0.15);
         }
@@ -151,7 +151,7 @@
 
     <!-- 排序模式切换按钮 -->
     <div class="mode-switch">
-        <button id="modeA" class="mode-btn active">重复去重排序</button>
+        <button id="modeA" class="mode-btn active">顺序排序</button>
         <button id="modeB" class="mode-btn">对齐排序</button>
     </div>
 
@@ -177,8 +177,19 @@
 </div>
 
 <script>
-    // 当前排序模式，默认模式A（去重排序）
-    let currentMode = 'A';
+    // 当前排序模式，从存储中恢复，默认为 'A'
+    let currentMode = localStorage.getItem('sortMode') || 'A';
+
+    // 保存模式到本地存储
+    function saveMode() {
+        localStorage.setItem('sortMode', currentMode);
+    }
+
+    // 根据当前模式更新按钮激活样式
+    function updateModeButtons() {
+        document.getElementById('modeA').classList.toggle('active', currentMode === 'A');
+        document.getElementById('modeB').classList.toggle('active', currentMode === 'B');
+    }
 
     // 提取数字
     function getNumbers(text) {
@@ -214,10 +225,8 @@
 
     // 模式B：第一组升序排列；第二组按第一组顺序排列，不在第一组中的数字升序排在最后
     function sortModeB(firstArr, secondArr) {
-        // 第一组：升序
         const sortedFirst = [...firstArr].sort((a, b) => a - b);
 
-        // 建立第一组去重顺序映射（用于第二组对齐）
         const firstOrder = new Map();
         let order = 0;
         sortedFirst.forEach(n => {
@@ -227,7 +236,6 @@
             }
         });
 
-        // 分离第二组数字
         const inFirst = [];
         const notInFirst = [];
         secondArr.forEach(n => {
@@ -238,14 +246,11 @@
             }
         });
 
-        // 在第一组中的数字：按第一组顺序排列（稳定排序）
         const sortedInFirst = [...inFirst].sort((a, b) => {
             return firstOrder.get(a) - firstOrder.get(b);
         });
 
-        // 不在第一组中的数字：升序排列
         const sortedNotInFirst = [...notInFirst].sort((a, b) => a - b);
-
         const sortedSecond = sortedInFirst.concat(sortedNotInFirst);
 
         return { first: sortedFirst, second: sortedSecond };
@@ -262,9 +267,8 @@
         }
 
         let first, second;
-
-        // 如果是模式B，保存第一组原始数字的集合用于红色标记
         let firstSet = null;
+
         if (currentMode === 'B') {
             firstSet = new Set(firstRaw);
             const result = sortModeB(firstRaw, secondRaw);
@@ -275,13 +279,11 @@
             second = sortModeA(secondRaw);
         }
 
-        // 补齐第二行长度
         const paddedSecond = [...second];
         while (paddedSecond.length < first.length) {
             paddedSecond.push("");
         }
 
-        // 生成表格，并给第二行中不在第一组中的格子添加红色标记
         let html = "<table><tr>";
         first.forEach(n => {
             html += "<td>" + n + "</td>";
@@ -297,10 +299,8 @@
         });
 
         html += "</tr></table>";
-
         document.getElementById("result").innerHTML = html;
 
-        // 保存排序结果到历史（只保存排序后的数组，不包含样式信息）
         saveHistoryResult(first, second.filter(n => n !== ""));
     }
 
@@ -308,7 +308,7 @@
         document.getElementById("input2").value = "";
     }
 
-    // ========== 历史记录（只保存结果数组）==========
+    // ========== 历史记录 ==========
     function saveHistoryResult(sorted1, sorted2) {
         if (sorted1.length === 0 && sorted2.length === 0) return;
 
@@ -347,7 +347,6 @@
             });
             tableHtml += '</tr><tr>';
             secondRow.forEach(n => {
-                // 历史记录不标记红色
                 tableHtml += '<td>' + (n !== "" ? n : '') + '</td>';
             });
             tableHtml += '</tr></table>';
@@ -367,17 +366,17 @@
         }
     }
 
-    // ========== 模式切换 ==========
+    // ========== 模式切换事件 ==========
     document.getElementById('modeA').addEventListener('click', function () {
         currentMode = 'A';
-        document.getElementById('modeA').classList.add('active');
-        document.getElementById('modeB').classList.remove('active');
+        updateModeButtons();
+        saveMode();
     });
 
     document.getElementById('modeB').addEventListener('click', function () {
         currentMode = 'B';
-        document.getElementById('modeB').classList.add('active');
-        document.getElementById('modeA').classList.remove('active');
+        updateModeButtons();
+        saveMode();
     });
 
     // ========== 原有自动保存与恢复 ==========
@@ -390,12 +389,19 @@
     });
 
     window.onload = function () {
+        // 恢复输入框内容
         document.getElementById("input1").value = localStorage.getItem("firstData") || "";
         document.getElementById("input2").value = localStorage.getItem("secondData") || "";
 
+        // 恢复排序模式并更新按钮
+        currentMode = localStorage.getItem('sortMode') || 'A';
+        updateModeButtons();
+
+        // 绑定删除按钮、渲染历史
         document.getElementById('deleteAllHistory').addEventListener('click', deleteAllHistory);
         renderHistory();
 
+        // 如有数据自动排序
         if (document.getElementById("input1").value.trim() !== '' || document.getElementById("input2").value.trim() !== '') {
             runSort();
         }
