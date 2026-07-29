@@ -100,6 +100,11 @@
             min-width: 50px;
         }
 
+        /* 新增：对齐模式下无对应数字的红色标记（低可见度） */
+        .not-in-first {
+            background-color: rgba(255, 0, 0, 0.15);
+        }
+
         .history-section {
             margin-top: 35px;
             border-top: 1px solid #ccc;
@@ -233,7 +238,7 @@
             }
         });
 
-        // 在第一组中的数字：按第一组顺序排列（稳定排序保持原相对顺序）
+        // 在第一组中的数字：按第一组顺序排列（稳定排序）
         const sortedInFirst = [...inFirst].sort((a, b) => {
             return firstOrder.get(a) - firstOrder.get(b);
         });
@@ -258,13 +263,16 @@
 
         let first, second;
 
-        if (currentMode === 'A') {
-            first = sortModeA(firstRaw);
-            second = sortModeA(secondRaw);
-        } else { // 模式B
+        // 如果是模式B，保存第一组原始数字的集合用于红色标记
+        let firstSet = null;
+        if (currentMode === 'B') {
+            firstSet = new Set(firstRaw);
             const result = sortModeB(firstRaw, secondRaw);
             first = result.first;
             second = result.second;
+        } else {
+            first = sortModeA(firstRaw);
+            second = sortModeA(secondRaw);
         }
 
         // 补齐第二行长度
@@ -273,19 +281,26 @@
             paddedSecond.push("");
         }
 
+        // 生成表格，并给第二行中不在第一组中的格子添加红色标记
         let html = "<table><tr>";
         first.forEach(n => {
             html += "<td>" + n + "</td>";
         });
         html += "</tr><tr>";
+
         paddedSecond.forEach(n => {
-            html += "<td>" + (n !== "" ? n : "") + "</td>";
+            let tdClass = "";
+            if (currentMode === 'B' && n !== "" && !firstSet.has(Number(n))) {
+                tdClass = ' class="not-in-first"';
+            }
+            html += "<td" + tdClass + ">" + (n !== "" ? n : "") + "</td>";
         });
+
         html += "</tr></table>";
 
         document.getElementById("result").innerHTML = html;
 
-        // 保存排序结果到历史
+        // 保存排序结果到历史（只保存排序后的数组，不包含样式信息）
         saveHistoryResult(first, second.filter(n => n !== ""));
     }
 
@@ -332,6 +347,7 @@
             });
             tableHtml += '</tr><tr>';
             secondRow.forEach(n => {
+                // 历史记录不标记红色
                 tableHtml += '<td>' + (n !== "" ? n : '') + '</td>';
             });
             tableHtml += '</tr></table>';
